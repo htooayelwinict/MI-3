@@ -73,7 +73,7 @@ def save_results(data: List[Dict[str, Any]], source: str) -> str:
     logger.info(f"Successfully saved {len(data)} articles to {filename}")
     return filename
 
-def run_yahoo_scraper(update_selectors=False) -> Optional[str]:
+def run_yahoo_scraper(update_selectors=False, enable_debug=False) -> Optional[str]:
     """Run the Yahoo Finance News scraper"""
     logger.info("Starting Yahoo Finance News scraper")
     
@@ -89,7 +89,9 @@ def run_yahoo_scraper(update_selectors=False) -> Optional[str]:
         except Exception as e:
             logger.error(f"Error updating selectors: {str(e)}")
     
-    scraper = YahooNewsScraper(headless=True)
+    # Enable debug mode if updating selectors or explicitly requested
+    debug_mode = update_selectors or enable_debug
+    scraper = YahooNewsScraper(headless=True, enable_debug=debug_mode)
     
     try:
         news_articles = scraper.scrape_news()
@@ -212,6 +214,7 @@ def main():
     parser.add_argument('--all', action='store_true', help='Run all scrapers')
     parser.add_argument('--debug', action='store_true', help='Run debug utility to analyze website structures')
     parser.add_argument('--update-selectors', action='store_true', help='Update selectors before scraping')
+    parser.add_argument('--enable-debug', action='store_true', help='Enable debug mode to auto-update selectors on errors')
     parser.add_argument('--process-sentiment', action='store_true', help='Run sentiment analysis and deduplication on scraped data')
     
     args = parser.parse_args()
@@ -235,6 +238,7 @@ def main():
     run_yahoo = args.yahoo or args.all
     run_google = args.google or args.all
     update_selectors = args.update_selectors
+    enable_debug = args.enable_debug
     process_sentiment = args.process_sentiment
     
     # If no specific scraper is selected, run all
@@ -242,9 +246,14 @@ def main():
         run_yahoo = run_google = True
         logger.info("No specific scraper selected, running all")
     
+    # Auto-enable debug mode when using --all to handle selector issues automatically
+    if args.all:
+        enable_debug = True
+        logger.info("Auto-enabled debug mode for comprehensive scraping")
+    
     # Run selected scrapers
     if run_yahoo:
-        yahoo_file = run_yahoo_scraper(update_selectors)
+        yahoo_file = run_yahoo_scraper(update_selectors, enable_debug)
         if yahoo_file:
             results['yahoo'] = yahoo_file
     

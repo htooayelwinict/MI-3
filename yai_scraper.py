@@ -37,7 +37,11 @@ logging.basicConfig(
 )
 
 class YahooNewsScraper:
-    def __init__(self, headless=True):
+    def __init__(self, headless=True, enable_debug=False):
+        # Store configuration
+        self.headless = headless
+        self.enable_debug = enable_debug
+        
         # Initialize the Chrome options
         options = webdriver.ChromeOptions()
         if headless:

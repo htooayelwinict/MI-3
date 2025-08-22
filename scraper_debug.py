@@ -387,14 +387,14 @@ class ScraperDebugger:
                                 'sample': text
                             })
         
-        # Log the selectors being saved
+        # Log the selectors being saved  
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        selector_file = f"debug/selectors/google_news_selectors_{timestamp}.json"
         logger.info(f"Saving selectors to {selector_file}")
         for key in selectors:
             logger.debug(f"{key}: {selectors[key]}")
             
         # Save the selectors
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        selector_file = f"debug/selectors/yahoo_finance_selectors_{timestamp}.json"
         
         with open(selector_file, 'w', encoding='utf-8') as f:
             json.dump(selectors, f, indent=4)
