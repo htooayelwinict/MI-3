@@ -1,0 +1,5 @@
+# ML dependencies for sentiment analysis
+torch>=2.0.0
+transformers>=4.20.0
+numpy>=1.21.0
+safetensors>=0.4.0
