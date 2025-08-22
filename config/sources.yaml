@@ -1,0 +1,39 @@
+# MI-3 News Scraper - RSS/Atom Feed Sources
+# List of feeds for real-time news ingestion
+# Add or remove feeds as needed
+
+feeds:
+  - name: Yahoo Finance - Latest News
+    url: https://finance.yahoo.com/news/rssindex
+    category: finance
+    priority: high
+    
+  - name: Google News - Business
+    url: https://news.google.com/rss/headlines/section/topic/BUSINESS
+    category: business
+    priority: high
+    
+  - name: Reuters - Business News
+    url: https://feeds.reuters.com/reuters/businessNews
+    category: business
+    priority: high
+    
+  - name: Bloomberg - Markets
+    url: https://feeds.bloomberg.com/markets/news.rss
+    category: markets
+    priority: medium
+    
+  - name: CNBC - Top News
+    url: https://www.cnbc.com/id/100003114/device/rss/rss.html
+    category: news
+    priority: medium
+    
+  - name: MarketWatch - Top Stories
+    url: https://feeds.marketwatch.com/marketwatch/topstories/
+    category: markets
+    priority: medium
+    
+  - name: Financial Times - Companies
+    url: https://www.ft.com/companies?format=rss
+    category: business
+    priority: medium

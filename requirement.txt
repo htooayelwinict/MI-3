@@ -1,6 +1,8 @@
 # MI-3 News Scraper - Complete Dependencies
 # Install base scraping functionality: pip install -r requirements-base.txt
 # Install with ML support: pip install -r requirements-base.txt -r requirements-ml.txt
+# Install with realtime feeds: pip install -r requirements-base.txt -r requirements-realtime.txt
 
 -r requirements-base.txt
 -r requirements-ml.txt
+-r requirements-realtime.txt

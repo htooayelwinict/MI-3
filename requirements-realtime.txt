@@ -1,0 +1,21 @@
+# MI-3 News Scraper - Real-time Feed Dependencies
+# Additional dependencies for RSS/Atom feed ingestion and real-time API
+
+# Async HTTP client for feed fetching
+aiohttp>=3.8.0
+
+# RSS/Atom feed parsing
+feedparser>=6.0.0
+
+# Date parsing utilities
+python-dateutil>=2.8.0
+
+# YAML configuration file parsing
+PyYAML>=6.0
+
+# FastAPI and ASGI server for real-time API
+fastapi>=0.100.0
+uvicorn[standard]>=0.20.0
+
+# CORS middleware
+starlette>=0.27.0

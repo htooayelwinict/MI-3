@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MI-3 News Stream - Server-Sent Events Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .events-container {
+            background: white;
+            border-radius: 10px;
+            max-height: 600px;
+            overflow-y: auto;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .event {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .event:last-child {
+            border-bottom: none;
+        }
+        .event-new-item {
+            background: #e8f5e8;
+            border-left: 4px solid #28a745;
+        }
+        .event-heartbeat {
+            background: #f8f9fa;
+            border-left: 4px solid #6c757d;
+            color: #6c757d;
+        }
+        .event-connected {
+            background: #d4edda;
+            border-left: 4px solid #155724;
+        }
+        .event-error {
+            background: #f8d7da;
+            border-left: 4px solid #721c24;
+        }
+        .event-initial {
+            background: #d1ecf1;
+            border-left: 4px solid #0c5460;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .disconnect-btn {
+            background: #dc3545;
+        }
+        .disconnect-btn:hover {
+            background: #c82333;
+        }
+        input[type="text"] {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-right: 10px;
+            width: 200px;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .stat-item {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚀 MI-3 News Stream</h1>
+        <p>Server-Sent Events (SSE) Real-time News Feed Test</p>
+    </div>
+
+    <div class="controls">
+        <h3>Connection Controls</h3>
+        <div>
+            <input type="text" id="sourceFilter" placeholder="Filter by source (optional)">
+            <button id="connectBtn" onclick="connectToStream()">Connect to Stream</button>
+            <button id="disconnectBtn" onclick="disconnectFromStream()" disabled class="disconnect-btn">Disconnect</button>
+            <button onclick="clearEvents()">Clear Events</button>
+            <button onclick="testLatestEndpoint()">Test /latest</button>
+        </div>
+    </div>
+
+    <div class="status">
+        <h3>Connection Status</h3>
+        <div id="statusIndicator">🔴 Disconnected</div>
+        
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-value" id="eventsReceived">0</div>
+                <div>Events Received</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="newItemsCount">0</div>
+                <div>New Items</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="heartbeatsCount">0</div>
+                <div>Heartbeats</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="connectionUptime">0s</div>
+                <div>Uptime</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="events-container">
+        <h3 style="padding: 15px; margin: 0; background: #f8f9fa; border-bottom: 1px solid #eee;">Live Events Stream</h3>
+        <div id="eventsLog"></div>
+    </div>
+
+    <script>
+        let eventSource = null;
+        let eventCount = 0;
+        let newItemsCount = 0;
+        let heartbeatsCount = 0;
+        let connectionStartTime = null;
+        let uptimeInterval = null;
+
+        function updateStatus(message, color) {
+            const status = document.getElementById('statusIndicator');
+            status.innerHTML = message;
+            status.style.color = color;
+        }
+
+        function updateStats() {
+            document.getElementById('eventsReceived').textContent = eventCount;
+            document.getElementById('newItemsCount').textContent = newItemsCount;
+            document.getElementById('heartbeatsCount').textContent = heartbeatsCount;
+        }
+
+        function updateUptime() {
+            if (connectionStartTime) {
+                const uptime = Math.floor((Date.now() - connectionStartTime) / 1000);
+                document.getElementById('connectionUptime').textContent = uptime + 's';
+            }
+        }
+
+        function addEvent(type, data, timestamp = null) {
+            eventCount++;
+            
+            const eventsLog = document.getElementById('eventsLog');
+            const eventDiv = document.createElement('div');
+            eventDiv.className = `event event-${type}`;
+            
+            const time = timestamp || new Date().toLocaleTimeString();
+            let content = `<strong>[${time}]</strong> `;
+            
+            switch(type) {
+                case 'connected':
+                    content += `🟢 Connected - Client ID: ${data.client_id}`;
+                    break;
+                case 'initial':
+                    content += `📦 Initial data: ${data.count} items (total: ${data.total_available})`;
+                    if (data.source_filter) {
+                        content += `<br>🔍 Filtered by: ${data.source_filter}`;
+                    }
+                    break;
+                case 'new-item':
+                    newItemsCount++;
+                    const item = data.item;
+                    content += `🆕 NEW: ${item.title}<br>`;
+                    content += `📰 Source: ${item.source}<br>`;
+                    content += `📅 Published: ${item.published}<br>`;
+                    content += `🔗 <a href="${item.link}" target="_blank">${item.link}</a>`;
+                    break;
+                case 'heartbeat':
+                    heartbeatsCount++;
+                    content += `💓 Heartbeat #${data.uptime_checks} - Tracking ${data.items_tracking} items`;
+                    if (data.last_data_update && data.last_data_update !== 'N/A') {
+                        content += `<br>📊 Last data update: ${new Date(data.last_data_update).toLocaleTimeString()}`;
+                    }
+                    break;
+                case 'error':
+                    content += `❌ Error: ${data.message}`;
+                    if (data.recoverable) {
+                        content += ' (attempting to recover...)';
+                    }
+                    break;
+                default:
+                    content += `❓ ${type}: ${JSON.stringify(data, null, 2)}`;
+            }
+            
+            eventDiv.innerHTML = content;
+            eventsLog.appendChild(eventDiv);
+            
+            // Auto-scroll to bottom
+            eventsLog.scrollTop = eventsLog.scrollHeight;
+            
+            // Limit to 100 events to prevent memory issues
+            while (eventsLog.children.length > 100) {
+                eventsLog.removeChild(eventsLog.firstChild);
+            }
+            
+            updateStats();
+        }
+
+        function connectToStream() {
+            if (eventSource) {
+                return; // Already connected
+            }
+
+            const sourceFilter = document.getElementById('sourceFilter').value.trim();
+            let url = '/stream';
+            if (sourceFilter) {
+                url += `?source=${encodeURIComponent(sourceFilter)}`;
+            }
+
+            updateStatus('🟡 Connecting...', '#ffc107');
+            
+            eventSource = new EventSource(url);
+            connectionStartTime = Date.now();
+            
+            // Start uptime counter
+            uptimeInterval = setInterval(updateUptime, 1000);
+
+            eventSource.onopen = function(event) {
+                updateStatus('🟢 Connected', '#28a745');
+                document.getElementById('connectBtn').disabled = true;
+                document.getElementById('disconnectBtn').disabled = false;
+                addEvent('info', {message: 'EventSource connection opened'});
+            };
+
+            eventSource.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    const timestamp = data.timestamp ? new Date(data.timestamp).toLocaleTimeString() : null;
+                    
+                    switch(data.type) {
+                        case 'connected':
+                            addEvent('connected', data, timestamp);
+                            break;
+                        case 'initial_data':
+                            addEvent('initial', data, timestamp);
+                            break;
+                        case 'new_item':
+                            addEvent('new-item', data, timestamp);
+                            break;
+                        case 'heartbeat':
+                            addEvent('heartbeat', data, timestamp);
+                            break;
+                        case 'error':
+                            addEvent('error', data, timestamp);
+                            break;
+                        default:
+                            addEvent('unknown', data, timestamp);
+                    }
+                } catch (e) {
+                    addEvent('error', {message: `Failed to parse event data: ${e.message}`});
+                }
+            };
+
+            eventSource.onerror = function(event) {
+                updateStatus('🔴 Connection Error', '#dc3545');
+                addEvent('error', {message: 'EventSource connection error'});
+                
+                if (eventSource.readyState === EventSource.CLOSED) {
+                    disconnectFromStream();
+                }
+            };
+        }
+
+        function disconnectFromStream() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
+            
+            if (uptimeInterval) {
+                clearInterval(uptimeInterval);
+                uptimeInterval = null;
+            }
+            
+            connectionStartTime = null;
+            
+            updateStatus('🔴 Disconnected', '#dc3545');
+            document.getElementById('connectBtn').disabled = false;
+            document.getElementById('disconnectBtn').disabled = true;
+            addEvent('info', {message: 'Disconnected from stream'});
+        }
+
+        function clearEvents() {
+            document.getElementById('eventsLog').innerHTML = '';
+            eventCount = 0;
+            newItemsCount = 0;
+            heartbeatsCount = 0;
+            updateStats();
+        }
+
+        async function testLatestEndpoint() {
+            try {
+                const response = await fetch('/latest?limit=5');
+                const data = await response.json();
+                
+                addEvent('info', {
+                    message: `Latest endpoint test: ${data.count} items retrieved`,
+                    data: data.items.slice(0, 2) // Show first 2 items
+                });
+            } catch (error) {
+                addEvent('error', {message: `Latest endpoint test failed: ${error.message}`});
+            }
+        }
+
+        // Auto-connect when page loads (optional)
+        // window.addEventListener('load', function() {
+        //     setTimeout(connectToStream, 1000);
+        // });
+        
+        // Clean up on page unload
+        window.addEventListener('beforeunload', function() {
+            disconnectFromStream();
+        });
+    </script>
+</body>
+</html>
